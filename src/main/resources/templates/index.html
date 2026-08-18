@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CulinaryAI — Smart Chef Studio</title>
+    <meta name="description" content="Transform your pantry into a gourmet kitchen. CulinaryAI generates personalized chef-grade recipes, nutrition insights, and smart cooking guidance from any ingredients you have.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link th:href="@{/css/recipe.css(v=${assetVersion})}" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ========== SPLASH SCREEN (2.0s Culinary Entrance Animation) ========== -->
+    <div id="splashScreen" aria-hidden="true">
+        <div class="splash-backdrop-glow"></div>
+        <div class="splash-inner">
+            <div class="splash-badge">
+                <i class="fas fa-sparkles"></i> AI Gastronomy Engine
+            </div>
+            <div class="splash-icon-wrap">
+                <div class="splash-sparkle s-1"><i class="fas fa-wand-magic-sparkles"></i></div>
+                <div class="splash-sparkle s-2"><i class="fas fa-fire"></i></div>
+                <div class="splash-sparkle s-3"><i class="fas fa-utensils"></i></div>
+                <div class="splash-sparkle s-4"><i class="fas fa-leaf"></i></div>
+                <div class="splash-icon-glow"></div>
+                <i class="fas fa-fire-burner splash-icon"></i>
+                <div class="splash-ring splash-ring-1"></div>
+                <div class="splash-ring splash-ring-2"></div>
+                <div class="splash-ring splash-ring-3"></div>
+            </div>
+            <div class="splash-wordmark">Culinary<span>AI</span></div>
+            <div class="splash-tagline">Smart Chef Studio & Recipe Intelligence</div>
+            <div class="splash-loader-wrap">
+                <div class="splash-loader">
+                    <div class="splash-loader-bar"></div>
+                </div>
+                <div class="splash-status-text" id="splashStatusText">Igniting culinary AI studio…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Glowing Orbs -->
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- ========== APP HEADER ========== -->
+    <header class="app-header">
+        <div class="app-header-inner">
+            <a href="/" class="app-brand" aria-label="CulinaryAI Chef Studio Home">
+                <div class="app-brand-icon">
+                    <i class="fas fa-fire-burner"></i>
+                </div>
+                <div class="app-brand-text">
+                    <h1>CulinaryAI</h1>
+                    <div class="app-brand-badge">
+                        <i class="fas fa-sparkles"></i> Smart Chef Studio
+                    </div>
+                </div>
+            </a>
+
+            <div class="app-header-actions">
+                <!-- Free Trial Pill / Meter -->
+                <div id="headerTrialBadge"
+                     th:classappend="${defaultKeyAvailable and !hasApiKey} ? '' : ' hidden'"
+                     class="trial-pill"
+                     role="button"
+                     tabindex="0"
+                     aria-label="Trial status and credits">
+                    <i class="fas fa-gift" style="color:var(--c-amber-light);" aria-hidden="true"></i>
+                    <span id="headerTrialText" th:text="|${defaultTrialsRemaining} of ${defaultRecipesMax} free left|">20 of 20 free left</span>
+                    <div class="trial-pill-progress" aria-hidden="true">
+                        <div id="headerTrialProgress" class="trial-pill-progress-fill"
+                             th:style="'width:' + (${defaultRecipesMax} > 0 ? (100 - ${defaultRecipesUsed} * 100 / ${defaultRecipesMax}) : 100) + '%'"></div>
+                    </div>
+                    <button type="button" id="trialHowBtn" style="background:none;border:none;color:inherit;cursor:pointer;font-size:0.75rem;text-decoration:underline;" title="How trial works">Info</button>
+                </div>
+
+                <!-- Library / Cookbook Button -->
+                <button id="libraryBtn" type="button" class="header-library-btn" aria-label="Open recipe cookbook">
+                    <i class="fas fa-book-bookmark" aria-hidden="true"></i>
+                    <span>Cookbook</span>
+                    <span id="libraryCount" class="header-library-count">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========== MAIN 2-COLUMN WORKSPACE ========== -->
+    <main>
+        <div class="workspace-grid">
+
+            <!-- ============================================== -->
+            <!-- LEFT COLUMN: AI KITCHEN STUDIO & PANTRY       -->
+            <!-- ============================================== -->
+            <section class="studio-sidebar" aria-label="Kitchen Studio Controls">
+                
+                <!-- Main Pantry Card -->
+                <div class="glass-panel">
+                    <div class="card-header-clean">
+                        <div class="card-title-wrap">
+                            <div class="card-title-icon">
+                                <i class="fas fa-carrot"></i>
+                            </div>
+                            <div class="card-title-text">
+                                <h2>Your Kitchen Pantry</h2>
+                                <p>Type or click quick ingredients below</p>
+                            </div>
+                        </div>
+                        <button type="button" id="openVisionBtn" class="btn btn-secondary btn-sm" style="gap:0.4rem;" title="Snap or upload photo of fridge/pantry to auto-detect ingredients">
+                            <i class="fas fa-camera" style="color:var(--c-primary);"></i>
+                            <span>Scan Photo</span>
+                        </button>
+                    </div>
+
+                    <div class="card-body">
+                        <form id="recipeForm" novalidate>
+                            
+                            <!-- Textarea -->
+                            <div class="textarea-wrapper">
+                                <textarea id="ingredients" name="ingredients" required
+                                          class="form-textarea"
+                                          placeholder="e.g. chicken breast, jasmine rice, garlic, tomatoes, fresh basil…"></textarea>
+                            </div>
+
+                            <!-- Smart Category Quick Add Chips -->
+                            <div class="chips-section">
+                                <div class="chips-header">
+                                    <span class="chips-label"><i class="fas fa-layer-group"></i> Quick Add</span>
+                                    <button type="button" id="surprisePantryBtn" class="surprise-btn" title="Randomly mix fresh ingredients">
+                                        <i class="fas fa-dice"></i> Surprise Me
+                                    </button>
+                                </div>
+
+                                <div id="ingredientChips" class="chips-row" aria-label="Quick ingredient chips">
+                                    <!-- 🥩 Proteins -->
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="chicken breast">🍗 Chicken</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="salmon fillet">🐟 Salmon</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="eggs">🥚 Eggs</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="tofu">🟨 Tofu</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="ground beef">🥩 Beef</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="shrimp">🦐 Shrimp</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="lamb chops">🍖 Lamb</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="tuna">🐡 Tuna</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="turkey">🦃 Turkey</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="pork tenderloin">🐷 Pork</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="chickpeas">🟤 Chickpeas</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="lentils">🫘 Lentils</button>
+                                    <button type="button" class="ingredient-chip chip-protein" data-ingredient="black beans">🫛 Black Beans</button>
+                                    <!-- 🥦 Vegetables -->
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="tomatoes">🍅 Tomatoes</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="spinach">🥬 Spinach</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="broccoli">🥦 Broccoli</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="bell pepper">🫑 Bell Pepper</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="zucchini">🥒 Zucchini</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="mushrooms">🍄 Mushrooms</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="eggplant">🍆 Eggplant</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="sweet potato">🍠 Sweet Potato</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="carrot">🥕 Carrot</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="cauliflower">🥦 Cauliflower</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="asparagus">🌿 Asparagus</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="kale">🥗 Kale</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="leek">🧅 Leek</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="corn">🌽 Corn</button>
+                                    <button type="button" class="ingredient-chip chip-veggie" data-ingredient="peas">💚 Peas</button>
+                                    <!-- 🍞 Pantry Staples -->
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="pasta">🍝 Pasta</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="jasmine rice">🍚 Rice</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="garlic">🧄 Garlic</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="onion">🧅 Onion</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="olive oil">🫒 Olive Oil</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="butter">🧈 Butter</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="parmesan cheese">🧀 Parmesan</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="heavy cream">🥛 Cream</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="soy sauce">🥢 Soy Sauce</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="honey">🍯 Honey</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="lemon">🍋 Lemon</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="fresh ginger">🫚 Ginger</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="coconut milk">🥥 Coconut Milk</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="canned tomatoes">🥫 Canned Tomato</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="bread">🍞 Bread</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="quinoa">🌾 Quinoa</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="flour">🌾 Flour</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="chili flakes">🌶️ Chili Flakes</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="cumin">🟤 Cumin</button>
+                                    <button type="button" class="ingredient-chip chip-pantry" data-ingredient="smoked paprika">🫙 Paprika</button>
+                                    <!-- 🧀 Dairy -->
+                                    <button type="button" class="ingredient-chip chip-dairy" data-ingredient="mozzarella">🧀 Mozzarella</button>
+                                    <button type="button" class="ingredient-chip chip-dairy" data-ingredient="cheddar cheese">🧀 Cheddar</button>
+                                    <button type="button" class="ingredient-chip chip-dairy" data-ingredient="greek yogurt">🥣 Greek Yogurt</button>
+                                    <button type="button" class="ingredient-chip chip-dairy" data-ingredient="feta cheese">🧀 Feta</button>
+                                </div>
+                            </div>
+
+                            <!-- Strict Pantry Switch Card -->
+                            <label class="strict-switch-card" for="onlyListedIngredients">
+                                <div class="strict-switch-info">
+                                    <span class="strict-switch-title">
+                                        <i class="fas fa-lock" style="color:var(--c-primary);font-size:0.8125rem;"></i>
+                                        Strict Pantry Mode
+                                    </span>
+                                    <span class="strict-switch-desc">Only use listed items (salt, pepper &amp; water included)</span>
+                                </div>
+                                <input type="checkbox" id="onlyListedIngredients" name="onlyListedIngredients" class="toggle-checkbox">
+                            </label>
+
+                            <!-- Cuisine & Dietary Preferences Accordion -->
+                            <details id="preferencesPanel" class="accordion-box">
+                                <summary>
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-sliders" style="color:var(--c-primary);"></i>
+                                        <span>Culinary Preferences</span>
+                                    </div>
+                                    <i class="fas fa-chevron-down chevron-icon" aria-hidden="true"></i>
+                                </summary>
+                                <div class="accordion-content">
+                                    <!-- Cuisine Dropdown -->
+                                    <div class="form-group">
+                                        <label for="cuisine" class="form-label">
+                                            <i class="fas fa-globe"></i> Cuisine Style
+                                        </label>
+                                        <select id="cuisine" name="cuisine" class="form-select">
+                                            <option value="">Any Cuisine Style</option>
+                                            <option value="Italian">🇮🇹 Italian</option>
+                                            <option value="Mexican">🇲🇽 Mexican</option>
+                                            <option value="Indian">🇮🇳 Indian</option>
+                                            <option value="Japanese">🇯🇵 Japanese</option>
+                                            <option value="Thai">🇹🇭 Thai</option>
+                                            <option value="Mediterranean">🫒 Mediterranean</option>
+                                            <option value="French">🇫🇷 French</option>
+                                            <option value="Spanish">🇪🇸 Spanish</option>
+                                            <option value="Chinese">🇨🇳 Chinese</option>
+                                            <option value="American">🇺🇸 American</option>
+                                            <option value="Greek">🇬🇷 Greek</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Dietary Needs -->
+                                    <div class="form-group">
+                                        <label for="dietaryRestrictions" class="form-label">
+                                            <i class="fas fa-leaf" style="color:var(--c-emerald);"></i> Dietary &amp; Health Focus
+                                        </label>
+                                        <input type="text" id="dietaryRestrictions" name="dietaryRestrictions"
+                                               class="form-input"
+                                               placeholder="e.g. vegetarian, gluten-free, keto, high-protein">
+                                        <div class="diet-pills-row">
+                                            <button type="button" class="diet-pill" data-diet="Vegetarian">Vegetarian</button>
+                                            <button type="button" class="diet-pill" data-diet="Vegan">Vegan</button>
+                                            <button type="button" class="diet-pill" data-diet="Gluten-Free">Gluten-Free</button>
+                                            <button type="button" class="diet-pill" data-diet="Keto">Keto</button>
+                                            <button type="button" class="diet-pill" data-diet="High-Protein">High-Protein</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <!-- API Key & Engine Config Accordion -->
+                            <details id="apiKeyPanel"
+                                     th:attr="open=${!defaultKeyAvailable and !hasApiKey} ? 'open' : null"
+                                     class="accordion-box">
+                                <summary>
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <i class="fas fa-key" style="color:var(--c-primary);"></i>
+                                        <div class="truncate">
+                                            <span id="apiKeyPanelTitle" style="font-weight:700;">Gemini API Engine</span>
+                                            <span id="apiKeyPanelSubtitle" style="font-size:0.75rem;color:var(--c-text-dim);"></span>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-down chevron-icon" aria-hidden="true"></i>
+                                </summary>
+                                <div class="accordion-content">
+                                    <p id="apiKeySummaryStatus" style="font-size:0.8125rem;color:var(--c-text-muted);"></p>
+
+                                    <!-- Trial exhausted notice -->
+                                    <div id="trialExhaustedInline"
+                                         th:classappend="${defaultKeyAvailable and !hasApiKey and defaultTrialsRemaining == 0} ? '' : ' hidden'"
+                                         class="alert-box alert-box-red">
+                                        <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                                        <span>Free trial completed on this device. Paste your key below or <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color:#fff;text-decoration:underline;">get a free Google AI Studio key</a>.</span>
+                                    </div>
+
+                                    <!-- No server key configured -->
+                                    <div id="apiKeyNoTrialInfo"
+                                         th:classappend="${!defaultKeyAvailable and !hasApiKey} ? '' : ' hidden'"
+                                         class="alert-box alert-box-blue">
+                                        <i class="fas fa-circle-info" aria-hidden="true"></i>
+                                        <span>No server key configured. Enter your Gemini API key below to enable recipe crafting.</span>
+                                    </div>
+
+                                    <!-- Input Row -->
+                                    <div id="apiKeyInput" class="form-group">
+                                        <label for="apiKey" class="form-label">
+                                            <i class="fas fa-shield-halved"></i> Custom Gemini API Key
+                                        </label>
+                                        <div class="flex gap-2">
+                                            <div class="input-password-wrap flex-1">
+                                                <input type="password" id="apiKey" autocomplete="off"
+                                                       class="form-input"
+                                                       placeholder="AIzaSy… paste key here">
+                                                <button type="button" id="toggleApiKeyVisibility" class="toggle-pw-btn" aria-label="Toggle key visibility">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                            <button id="setApiKeyBtn" type="button" class="btn btn-primary btn-sm shrink-0">
+                                                <i class="fas fa-check"></i> Save
+                                            </button>
+                                        </div>
+                                        <span style="font-size:0.6875rem;color:var(--c-text-dim);margin-top:0.25rem;">
+                                            <i class="fas fa-lock" style="color:var(--c-emerald);margin-right:0.2rem;"></i>
+                                            Encrypted in browser session only — never stored permanently on the server.
+                                        </span>
+                                    </div>
+
+                                    <!-- Active Key Indicator -->
+                                    <div id="apiKeyStatus" class="hidden">
+                                        <div class="key-active-card">
+                                            <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.8125rem;font-weight:700;color:var(--c-emerald-light);">
+                                                <i class="fas fa-circle-check"></i> Custom Key Active · Unlimited Recipes
+                                            </span>
+                                            <button id="clearApiKeyBtn" type="button" class="btn btn-danger btn-sm shrink-0">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Error message container -->
+                                    <div id="apiKeyError" class="hidden" role="alert">
+                                        <div class="alert-box alert-box-red">
+                                            <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                                            <span id="apiKeyErrorMessage"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <!-- Generation Blocked Alert -->
+                            <div id="generationBlockedNotice" class="generation-blocked-notice hidden" role="status">
+                                <i class="fas fa-lock" aria-hidden="true"></i>
+                                <span id="generationBlockedText"></span>
+                                <button type="button" id="openApiKeyFromNotice">Add Key</button>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="action-grid">
+                                <button type="submit" id="generateBtn" class="btn btn-primary">
+                                    <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+                                    Generate Recipe
+                                </button>
+                                <button type="button" id="tipsBtn" class="btn btn-secondary">
+                                    <i class="fas fa-lightbulb" style="color:var(--c-amber);" aria-hidden="true"></i>
+                                    Tips Only
+                                </button>
+                            </div>
+
+                            <button type="button" id="clearRecipeBtn" class="btn btn-ghost">
+                                <i class="fas fa-rotate-left" aria-hidden="true"></i> Clear Pantry &amp; Canvas
+                            </button>
+                        </form>
+
+                        <!-- Form Error -->
+                        <div id="formError" class="hidden" role="alert" style="margin-top:1rem;">
+                            <div class="alert-box alert-box-red">
+                                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                                <p id="formErrorMessage"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- RIGHT COLUMN: RECIPE SHOWCASE STUDIO          -->
+            <!-- ============================================== -->
+            <section class="studio-showcase" aria-label="Recipe Presentation Studio">
+                <div class="glass-panel showcase-card">
+                    
+                    <!-- Top Studio Header -->
+                    <div class="card-header-clean">
+                        <div class="card-title-wrap">
+                            <div class="card-title-icon" style="background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.3);color:var(--c-emerald-light);">
+                                <i class="fas fa-plate-wheat"></i>
+                            </div>
+                            <div class="card-title-text">
+                                <h2>Recipe Studio Canvas</h2>
+                                <p>Interactive ingredients, cooking mode &amp; macros</p>
+                            </div>
+                        </div>
+                        <button type="button" id="cancelGenerateBtn" class="cancel-gen-btn hidden">
+                            <i class="fas fa-xmark" aria-hidden="true"></i> Cancel
+                        </button>
+                    </div>
+
+                    <!-- 1. EMPTY / WELCOME STATE -->
+                    <div id="emptyShowcase" class="empty-showcase">
+                        <div class="empty-chef-icon">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <h3>Your Culinary Canvas Awaits</h3>
+                        <p>Add ingredients on the left and let our AI chef craft an exquisite gourmet meal tailored to what you have.</p>
+                        
+                        <div class="starters-grid">
+                            <div class="starter-card" data-ingredients="chicken breast, garlic, olive oil, lemon, rosemary" data-cuisine="Mediterranean">
+                                <div class="starter-emoji">🍋</div>
+                                <div class="starter-title">Lemon Rosemary Chicken</div>
+                                <div class="starter-items">Chicken, garlic, olive oil, lemon</div>
+                            </div>
+                            <div class="starter-card" data-ingredients="fettuccine pasta, cream, garlic, parmesan, butter" data-cuisine="Italian">
+                                <div class="starter-emoji">🍝</div>
+                                <div class="starter-title">Garlic Alfredo Pasta</div>
+                                <div class="starter-items">Pasta, cream, garlic, parmesan</div>
+                            </div>
+                            <div class="starter-card" data-ingredients="tofu, soy sauce, broccoli, ginger, sesame oil" data-cuisine="Japanese">
+                                <div class="starter-emoji">🥢</div>
+                                <div class="starter-title">Ginger Soy Tofu Bowl</div>
+                                <div class="starter-items">Tofu, soy sauce, broccoli, ginger</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. LOADING STATE WITH COOKING SKELETON -->
+                    <div id="resultsLoading" class="loading-showcase hidden" aria-live="polite">
+                        <div class="loader-anim-wrap">
+                            <i class="fas fa-kitchen-set"></i>
+                        </div>
+                        <p id="resultsLoadingText" class="loading-title">Crafting your recipe…</p>
+                        <div class="recipe-skeleton">
+                            <div class="skeleton-shimmer sk-title"></div>
+                            <div class="sk-meta-row">
+                                <div class="skeleton-shimmer sk-meta"></div>
+                                <div class="skeleton-shimmer sk-meta"></div>
+                                <div class="skeleton-shimmer sk-meta"></div>
+                            </div>
+                            <div class="skeleton-shimmer sk-line"></div>
+                            <div class="skeleton-shimmer sk-line"></div>
+                            <div class="skeleton-shimmer sk-line-short"></div>
+                        </div>
+                        <p class="loading-subtext"><i class="fas fa-sparkles" style="color:var(--c-primary);margin-right:0.25rem;"></i> CulinaryAI is crafting your perfect recipe…</p>
+                    </div>
+
+                    <!-- 3. ERROR CONTAINER -->
+                    <div id="resultsError" class="hidden" role="alert" style="padding:1.5rem;">
+                        <div class="alert-box alert-box-red">
+                            <i class="fas fa-triangle-exclamation" style="font-size:1.125rem;flex-shrink:0;"></i>
+                            <div class="flex justify-between items-center gap-3 w-full" style="flex-wrap:wrap;">
+                                <span id="resultsErrorMessage"></span>
+                                <button type="button" id="retryBtn" class="hidden btn btn-ghost btn-sm" style="color:inherit;text-decoration:underline;">Try again</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. RENDERED RECIPE RESULTS PANEL -->
+                    <div id="resultsPanel" class="hidden">
+                        <div id="results"></div>
+                    </div>
+
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ========== TRIAL INFO MODAL ========== -->
+    <div id="trialInfoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="trialInfoTitle">
+        <div class="modal-box" style="max-width:440px;width:100%;padding:1.75rem;">
+            <div class="flex items-center gap-3" style="margin-bottom:1rem;">
+                <div class="card-title-icon" style="background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.3);color:var(--c-amber-light);">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <h3 id="trialInfoTitle" style="font-family:var(--font-display);font-size:1.125rem;font-weight:700;color:var(--c-text);">
+                    Free Trial Overview
+                </h3>
+            </div>
+            <p id="trialInfoBody" style="font-size:0.875rem;color:var(--c-text-muted);margin-bottom:1.25rem;line-height:1.6;" th:text="${trialDeviceNotice}">
+                No signup required. 20 free recipes per device cookie.
+            </p>
+            <ul style="font-size:0.8125rem;color:var(--c-text-muted);margin-bottom:1.5rem;padding-left:1.25rem;display:flex;flex-direction:column;gap:0.5rem;">
+                <li>Enjoy up to <strong th:text="${defaultRecipesMax}" style="color:var(--c-primary-light);">20</strong> recipes on this device for free.</li>
+                <li>Each recipe generation or tips request uses one credit.</li>
+                <li>Add your own API key anytime for unlimited access.</li>
+                <li>Cookbook recipes stay safely on your local device.</li>
+            </ul>
+            <button type="button" id="closeTrialInfoBtn" class="btn btn-primary w-full">Got It</button>
+        </div>
+    </div>
+
+    <!-- ========== LIBRARY / COOKBOOK MODAL ========== -->
+    <div id="libraryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="libraryModalTitle">
+        <div class="modal-box" style="max-width:620px;width:100%;max-height:85vh;display:flex;flex-direction:column;">
+            <div class="modal-header">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button type="button" id="libraryBackBtn" class="hidden modal-close-btn" aria-label="Back to collections">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="modal-title truncate" id="libraryModalTitle">
+                        <i class="fas fa-book-bookmark" style="color:var(--c-primary);"></i>
+                        <span id="libraryTitleText">My Cookbook</span>
+                    </div>
+                </div>
+                <button id="closeLibraryBtn" type="button" class="modal-close-btn" aria-label="Close cookbook">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div style="padding:0.625rem 1.5rem;font-size:0.75rem;color:var(--c-text-dim);background:rgba(255,255,255,0.02);border-bottom:1px solid var(--c-border-subtle);">
+                <i class="fas fa-hard-drive" style="margin-right:0.25rem;color:var(--c-primary);"></i>
+                Offline storage: Generated recipes automatically save to <strong>My Recipes</strong> on this device.
+            </div>
+
+            <!-- Shelf View -->
+            <div id="libraryShelfView" style="padding:1.5rem;overflow-y:auto;flex:1;">
+                <form id="newCollectionForm" class="flex gap-2" style="margin-bottom:1.25rem;">
+                    <input type="text" id="newCollectionTitle" class="form-input" maxlength="120" placeholder="Create new collection (e.g. Quick Dinners)…">
+                    <button type="submit" class="btn btn-primary btn-sm shrink-0">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </form>
+                <div id="libraryShelfGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.875rem;"></div>
+                <div id="emptyLibraryShelf" class="hidden text-center" style="padding:3rem 1rem;">
+                    <i class="fas fa-book-open" style="font-size:2.5rem;color:var(--c-text-dim);margin-bottom:0.75rem;display:block;"></i>
+                    <p style="font-weight:700;color:var(--c-text-muted);">Your cookbook is empty</p>
+                    <p style="font-size:0.8125rem;color:var(--c-text-dim);margin-top:0.25rem;">Generate a recipe and it will appear here automatically.</p>
+                </div>
+            </div>
+
+            <!-- Chapter View -->
+            <div id="libraryChapterView" class="hidden" style="padding:1.5rem;overflow-y:auto;flex:1;">
+                <div id="libraryChapterList" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
+                <div id="emptyLibraryChapter" class="hidden text-center" style="padding:3rem 1rem;">
+                    <i class="fas fa-utensils" style="font-size:2.5rem;color:var(--c-text-dim);margin-bottom:0.75rem;display:block;"></i>
+                    <p id="emptyLibraryChapterTitle" style="font-weight:700;color:var(--c-text-muted);">No recipes in this collection yet</p>
+                    <p id="emptyLibraryChapterHint" style="font-size:0.8125rem;color:var(--c-text-dim);margin-top:0.25rem;">Star a recipe to add it here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== ADD TO COLLECTION MODAL ========== -->
+    <div id="addToCollectionModal" class="modal-backdrop hidden" style="z-index:65;" role="dialog" aria-modal="true" aria-labelledby="addToCollectionTitle">
+        <div class="modal-box" style="max-width:380px;width:100%;padding:1.5rem;">
+            <div class="flex items-center gap-2" style="margin-bottom:1rem;">
+                <i class="fas fa-folder-plus" style="color:var(--c-primary);font-size:1.125rem;"></i>
+                <h3 id="addToCollectionTitle" style="font-family:var(--font-display);font-size:1.0625rem;font-weight:700;color:var(--c-text);">
+                    Add to Collection
+                </h3>
+            </div>
+            <div id="addToCollectionList" style="display:flex;flex-direction:column;gap:0.5rem;max-height:16rem;overflow-y:auto;margin-bottom:1.25rem;"></div>
+            <button type="button" id="closeAddToCollectionBtn" class="btn btn-secondary w-full btn-sm">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ========== AI VISION SCANNER MODAL ========== -->
+    <div id="visionModal" class="modal-backdrop hidden" style="z-index:70;" role="dialog" aria-modal="true" aria-labelledby="visionModalTitle">
+        <div class="modal-box" style="max-width:540px;width:100%;max-height:90vh;display:flex;flex-direction:column;">
+            <div class="modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="card-title-icon" style="background:rgba(249,115,22,0.15);border-color:rgba(249,115,22,0.3);color:var(--c-primary);">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h3 id="visionModalTitle" class="modal-title">
+                        AI Fridge &amp; Ingredient Scanner
+                    </h3>
+                </div>
+                <button id="closeVisionBtn" type="button" class="modal-close-btn" aria-label="Close scanner">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <div style="padding:1.5rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:1.25rem;">
+                
+                <!-- Upload Dropzone -->
+                <div id="visionDropzone" class="vision-dropzone" tabindex="0" role="button" aria-label="Click or drop photo here">
+                    <input type="file" id="visionFileInput" accept="image/*,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif,.bmp,.jfif,.heic,.heif" class="hidden">
+                    <input type="file" id="visionCameraInput" accept="image/*" capture="environment" class="hidden">
+                    <i class="fas fa-cloud-arrow-up vision-dropzone-icon"></i>
+                    <p class="vision-dropzone-title">Drop your fridge/pantry photo here</p>
+                    <p class="vision-dropzone-sub">or click to browse · paste screenshot (Ctrl+V) · JPG, PNG, WEBP, HEIC</p>
+                    <div class="flex gap-2 justify-center" style="margin-top:0.75rem;">
+                        <button type="button" id="visionBrowseBtn" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-image"></i> Browse Photo
+                        </button>
+                        <button type="button" id="visionCameraBtn" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-camera"></i> Take Photo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Camera Stream Box (hidden by default) -->
+                <div id="visionCameraBox" class="hidden" style="position:relative;border-radius:var(--radius-md);overflow:hidden;background:#000;text-align:center;">
+                    <video id="visionCameraVideo" autoplay playsinline muted style="width:100%;max-height:280px;object-fit:cover;display:block;background:#111;"></video>
+                    <div style="position:absolute;bottom:0.75rem;left:0;right:0;display:flex;justify-content:center;gap:0.75rem;z-index:10;background:linear-gradient(to top, rgba(0,0,0,0.7), transparent);padding:0.75rem 0;">
+                        <button type="button" id="visionSnapBtn" class="btn btn-primary btn-sm">
+                            <i class="fas fa-circle-dot"></i> Snap Photo
+                        </button>
+                        <button type="button" id="visionCloseCameraBtn" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Image Preview Box (hidden by default) -->
+                <div id="visionPreviewBox" class="hidden" style="position:relative;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--c-border);">
+                    <img id="visionImagePreview" src="" alt="Scanned Food Preview" style="width:100%;max-height:240px;object-fit:cover;display:block;">
+                    <button type="button" id="visionRemoveImageBtn" class="modal-close-btn" style="position:absolute;top:0.5rem;right:0.5rem;background:rgba(0,0,0,0.6);" title="Remove photo">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Scanning Progress Animation -->
+                <div id="visionLoading" class="hidden text-center" style="padding:1.5rem 0;">
+                    <div class="loader-anim-wrap" style="width:3.5rem;height:3.5rem;margin-bottom:0.75rem;">
+                        <i class="fas fa-brain" style="font-size:1.5rem;color:var(--c-primary);animation:chefPulse 1.5s infinite alternate;"></i>
+                    </div>
+                    <p style="font-weight:700;color:var(--c-text);">Gemini Vision is analyzing ingredients…</p>
+                    <p style="font-size:0.75rem;color:var(--c-text-dim);margin-top:0.25rem;">Detecting vegetables, proteins, dairy, and spices</p>
+                </div>
+
+                <!-- Detected Results Container -->
+                <div id="visionResultsBox" class="hidden" style="display:flex;flex-direction:column;gap:0.875rem;">
+                    <div class="alert-box alert-box-blue" style="font-size:0.8125rem;">
+                        <i class="fas fa-wand-magic-sparkles" style="color:var(--c-primary);flex-shrink:0;"></i>
+                        <span id="visionSummaryText">Detected items from your photo:</span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--c-text-muted);">
+                            <i class="fas fa-check-double"></i> Select items to import
+                        </span>
+                        <div class="flex gap-2">
+                            <button type="button" id="visionSelectAllBtn" class="btn-ghost" style="padding:0;font-size:0.75rem;color:var(--c-primary-light);">Select All</button>
+                        </div>
+                    </div>
+
+                    <div id="visionDetectedChips" style="display:flex;flex-wrap:wrap;gap:0.5rem;max-height:10rem;overflow-y:auto;padding:0.25rem 0;"></div>
+                </div>
+
+                <!-- Error Container -->
+                <div id="visionError" class="hidden alert-box alert-box-red">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span id="visionErrorMessage"></span>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.75rem;padding:1rem 1.5rem;border-top:1px solid var(--c-border-subtle);">
+                <button type="button" id="visionCancelBtn" class="btn btn-secondary btn-sm">Close</button>
+                <button type="button" id="scanImageBtn" class="btn btn-primary btn-sm hidden">
+                    <i class="fas fa-sparkles"></i> Scan Photo with AI
+                </button>
+                <button type="button" id="importDetectedBtn" class="btn btn-primary btn-sm hidden">
+                    <i class="fas fa-plus"></i> Import to Pantry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== LUXURY CONFIRM MODAL (FIXED SCREENSHOT ISSUE) ========== -->
+    <div id="confirmModal" class="modal-backdrop hidden" style="z-index:75;" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+        <div class="modal-box confirm-modal-box">
+            <div class="confirm-icon-wrap">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirmModalTitle" class="confirm-title">Are you sure?</h3>
+            <p id="confirmModalMessage" class="confirm-message"></p>
+            <div class="confirm-btn-row">
+                <button id="confirmModalCancel" type="button" class="btn btn-secondary">Cancel</button>
+                <button id="confirmModalOk" type="button" class="btn btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TOAST NOTIFICATION CONTAINER ========== -->
+    <div id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- ========== APP FOOTER ========== -->
+    <footer class="app-footer">
+        <p>
+            <i class="fas fa-fire-burner" style="color:var(--c-primary);"></i>
+            &copy; 2026 <strong>CulinaryAI Chef Studio</strong>
+            &nbsp;&middot;&nbsp; Crafted with passion for food lovers
+            &nbsp;&middot;&nbsp;
+            <a href="/" style="color:var(--c-primary-light);">Start Cooking &rarr;</a>
+        </p>
+    </footer>
+
+    <!-- Scripts -->
+    <script th:src="@{/js/recipe-renderer.js(v=${assetVersion})}"></script>
+    <script th:src="@{/js/app.js(v=${assetVersion})}"></script>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "ai-recipe-assistant-agent",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/main/resources/static/css/tailwind-input.css -o ./src/main/resources/static/css/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
