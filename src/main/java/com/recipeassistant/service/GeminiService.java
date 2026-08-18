@@ -91,16 +91,16 @@ public class GeminiService {
     @Value("${gemini.api.base-url:https://generativelanguage.googleapis.com/v1beta}")
     private String baseUrl;
 
-    @Value("${gemini.api.model.recipe:gemini-2.5-flash}")
+    @Value("${gemini.api.model.recipe:gemini-3.6-flash}")
     private String recipeModel;
 
-    @Value("${gemini.api.model.tips:gemini-2.5-flash}")
+    @Value("${gemini.api.model.tips:gemini-3.6-flash}")
     private String tipsModel;
 
-    @Value("${gemini.api.model.validation:gemini-2.5-flash}")
+    @Value("${gemini.api.model.validation:gemini-3.6-flash}")
     private String validationModel;
 
-    @Value("${gemini.api.model.vision:gemini-2.5-flash}")
+    @Value("${gemini.api.model.vision:gemini-3.6-flash}")
     private String visionModel;
 
     private final RestTemplate restTemplate;
@@ -112,8 +112,7 @@ public class GeminiService {
 
     public boolean validateApiKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
-            return false;
-        }
+            return false;        }
         try {
             String url = baseUrl + "/models?key=" + apiKey.trim();
             HttpHeaders headers = new HttpHeaders();
