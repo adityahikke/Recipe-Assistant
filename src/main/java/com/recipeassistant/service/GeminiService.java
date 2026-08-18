@@ -235,15 +235,15 @@ public class GeminiService {
 
     private String callGemini(String apiKey, String model, String prompt, String jsonSchema,
                               Runnable cancellationCheck, int maxTokens, double temperature) {
-        try {
-            return doCallGemini(apiKey, model, prompt, jsonSchema, cancellationCheck, maxTokens, temperature);
-        } catch (GeminiClientException e) {
-            if (e.getStatusCode() != null && e.getStatusCode().value() == 404 && !model.equals("gemini-1.5-flash")) {
-                log.warn("Gemini model {} not found (404), falling back to gemini-1.5-flash", model);
-                return doCallGemini(apiKey, "gemini-1.5-flash", prompt, jsonSchema, cancellationCheck, maxTokens, temperature);
-            }
-            throw e;
-        }
+        return doCallGemini(
+                apiKey,
+                model,
+                prompt,
+                jsonSchema,
+                cancellationCheck,
+                maxTokens,
+                temperature
+        );
     }
 
     private String doCallGemini(String apiKey, String model, String prompt, String jsonSchema,
@@ -298,17 +298,21 @@ public class GeminiService {
         }
     }
 
-    private String callGeminiMultimodal(String apiKey, String model, String prompt, String mimeType, String base64Image,
-                                        String jsonSchema, Runnable cancellationCheck, int maxTokens, double temperature) {
-        try {
-            return doCallGeminiMultimodal(apiKey, model, prompt, mimeType, base64Image, jsonSchema, cancellationCheck, maxTokens, temperature);
-        } catch (GeminiClientException e) {
-            if (e.getStatusCode() != null && e.getStatusCode().value() == 404 && !model.equals("gemini-1.5-flash")) {
-                log.warn("Gemini vision model {} not found (404), falling back to gemini-1.5-flash", model);
-                return doCallGeminiMultimodal(apiKey, "gemini-1.5-flash", prompt, mimeType, base64Image, jsonSchema, cancellationCheck, maxTokens, temperature);
-            }
-            throw e;
-        }
+    private String callGeminiMultimodal(String apiKey, String model, String prompt,
+                                        String mimeType, String base64Image,
+                                        String jsonSchema, Runnable cancellationCheck,
+                                        int maxTokens, double temperature) {
+        return doCallGeminiMultimodal(
+                apiKey,
+                model,
+                prompt,
+                mimeType,
+                base64Image,
+                jsonSchema,
+                cancellationCheck,
+                maxTokens,
+                temperature
+        );
     }
 
     private String doCallGeminiMultimodal(String apiKey, String model, String prompt, String mimeType, String base64Image,
